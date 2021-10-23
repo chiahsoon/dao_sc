@@ -3,17 +3,16 @@ pragma solidity 0.7.6;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
 import {IERC20Ext} from '@kyber.network/utils-sc/contracts/IERC20Ext.sol';
-import {ERC20, ERC20Burnable} from '@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol';
+import {ERC20BurnableUpgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20BurnableUpgradeable.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import {ReentrancyGuard} from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
-import {
-  PermissionAdmin,
-  PermissionOperators
-} from '@kyber.network/utils-sc/contracts/PermissionOperators.sol';
-
+import {ReentrancyGuardUpgradeable} from '@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol';
+import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
 import {IKyberStaking} from '../interfaces/staking/IKyberStaking.sol';
 import {IRewardsDistributor} from '../interfaces/rewardDistribution/IRewardsDistributor.sol';
 import {IKyberGovernance} from '../interfaces/governance/IKyberGovernance.sol';
+import {PermissionAdminUpgradeable} from './PermissionAdminUpgradeable.sol';
+import {PermissionOperatorsUpgradeable} from './PermissionOperatorsUpgradeable.sol';
+import '@openzeppelin/contracts/proxy/ProxyAdmin.sol';
 
 interface INewKNC {
   function mintWithOldKnc(uint256 amount) external;
@@ -35,7 +34,8 @@ interface IKyberNetworkProxy {
   ) external returns (uint256 destAmount);
 }
 
-contract PoolMaster is PermissionAdmin, PermissionOperators, ReentrancyGuard, ERC20Burnable {
+contract PoolMaster is PermissionAdminUpgradeable, PermissionOperatorsUpgradeable, ReentrancyGuardUpgradeable, 
+ERC20BurnableUpgradeable {
   using SafeMath for uint256;
   using SafeERC20 for IERC20Ext;
 
@@ -57,15 +57,15 @@ contract PoolMaster is PermissionAdmin, PermissionOperators, ReentrancyGuard, ER
   uint256 public withdrawableAdminFees;
 
   IKyberNetworkProxy public kyberProxy;
-  IKyberStaking public immutable kyberStaking;
+  IKyberStaking public kyberStaking;
   IRewardsDistributor public rewardsDistributor;
   IKyberGovernance public kyberGovernance;
-  IERC20Ext public immutable newKnc;
-  IERC20Ext private immutable oldKnc;
+  IERC20Ext public newKnc;
+  IERC20Ext private oldKnc;
 
   receive() external payable {}
 
-  constructor(
+  function initialize(
     string memory _name,
     string memory _symbol,
     IKyberNetworkProxy _kyberProxy,
@@ -75,7 +75,10 @@ contract PoolMaster is PermissionAdmin, PermissionOperators, ReentrancyGuard, ER
     uint256 _mintFeeBps,
     uint256 _claimFeeBps,
     uint256 _burnFeeBps
-  ) ERC20(_name, _symbol) PermissionAdmin(msg.sender) {
+  ) public initializer {
+    __ERC20_init(_name, _symbol); // TODO: Need to init ERC20BurnableUpgradeable?
+    __PermissionAdmin_init(msg.sender);
+    __ReentrancyGuard_init();
     kyberProxy = _kyberProxy;
     kyberStaking = _kyberStaking;
     kyberGovernance = _kyberGovernance;

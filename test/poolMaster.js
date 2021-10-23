@@ -95,22 +95,35 @@ contract('PoolMaster', function () {
     await newKnc.connect(admin).mint(rewardsDistributor.address, initialBalance);
     await admin.sendTransaction({to: rewardsDistributor.address, value: precisionUnits.mul(new BN.from(10))});
     await dai.transfer(rewardsDistributor.address, initialBalance);
+
+    // deployProxy will set 'user' as the owner of the ProxyAdmin contract by default, might be better to change to admin
+    await upgrades.admin.transferProxyAdminOwnership(admin.address);
   });
 
   beforeEach('deploy poolMaster contract', async () => {
-    let PoolMaster = await ethers.getContractFactory('PoolMaster');
-    poolMaster = await PoolMaster.connect(admin).deploy(
-      'Pool KNC',
-      'PKNC',
-      kyberProxy.address,
-      kyberStaking.address,
-      kyberGovernance.address,
-      rewardsDistributor.address,
-      mintFeeBps,
-      claimFeeBps,
-      burnFeeBps
-    );
+    let PoolMaster = await ethers.getContractFactory('PoolMaster', admin);
+    poolMaster = await upgrades.deployProxy(PoolMaster, [
+        'Pool KNC',
+        'PKNC',
+        kyberProxy.address,
+        kyberStaking.address,
+        kyberGovernance.address,
+        rewardsDistributor.address,
+        mintFeeBps,
+        claimFeeBps,
+        burnFeeBps], {initializer: 'initialize'})
     await poolMaster.deployed();
+  });
+
+  it('should allow upgrading poolMaster by owner only', async () => {
+    console.log('ProxyAdmin Owner | User | Admin: ', await (await upgrades.admin.getInstance()).owner(), user.address, admin.address);
+    let PoolMasterV2 = await ethers.getContractFactory('PoolMasterV2');
+
+    await expectRevert(upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(user)), 'Ownable: caller is not the owner');
+    await expectRevert(upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(operator)), 'Ownable: caller is not the owner');
+    // OpenZeppelin probably has some magic here to make the ProxyAdmin contract call the Proxy's upgradeTo function instead of delegating
+    let poolMasterV2 = await upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(admin));
+    Helper.assertEqual(await poolMasterV2.checkUpgraded(), 'upgraded');
   });
 
   it('should allow changing of proxy by admin only', async () => {
@@ -129,7 +142,7 @@ contract('PoolMaster', function () {
     Helper.assertEqual(await poolMaster.rewardsDistributor(), admin.address);
   });
 
-  it('should allow changing of rewards distributor by admin only', async () => {
+  it('should allow changing of governance by admin only', async () => {
     await expectRevert(poolMaster.connect(operator).changeGovernance(admin.address), 'only admin');
     await expectRevert(poolMaster.connect(user).changeGovernance(admin.address), 'only admin');
 
