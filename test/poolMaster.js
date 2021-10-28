@@ -118,11 +118,11 @@ contract('PoolMaster', function () {
   it('should allow upgrading poolMaster by owner only', async () => {
     console.log('ProxyAdmin Owner | User | Admin: ', await (await upgrades.admin.getInstance()).owner(), user.address, admin.address);
     let PoolMasterV2 = await ethers.getContractFactory('PoolMasterV2');
-
     await expectRevert(upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(user)), 'Ownable: caller is not the owner');
     await expectRevert(upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(operator)), 'Ownable: caller is not the owner');
-    // OpenZeppelin probably has some magic here to make the ProxyAdmin contract call the Proxy's upgradeTo function instead of delegating
+
     let poolMasterV2 = await upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(admin));
+    Helper.assertEqual(poolMaster.address, poolMasterV2.address, 'proxy address should be constant');
     Helper.assertEqual(await poolMasterV2.checkUpgraded(), 'upgraded');
   });
 
