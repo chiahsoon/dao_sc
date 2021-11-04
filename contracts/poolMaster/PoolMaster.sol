@@ -34,7 +34,7 @@ interface IKyberNetworkProxy {
   ) external returns (uint256 destAmount);
 }
 
-contract PoolMaster is PermissionAdminUpgradeable, PermissionOperatorsUpgradeable, ReentrancyGuardUpgradeable, 
+contract PoolMaster is PermissionAdminUpgradeable, PermissionOperatorsUpgradeable, ReentrancyGuardUpgradeable,
 ERC20BurnableUpgradeable {
   using SafeMath for uint256;
   using SafeERC20 for IERC20Ext;
@@ -47,6 +47,8 @@ ERC20BurnableUpgradeable {
 
   event FeesSet(uint256 mintFeeBps, uint256 burnFeeBps, uint256 claimFeeBps);
   enum FeeTypes {MINT, CLAIM, BURN}
+
+  uint256 internal constant VERSION_NO = 1;
 
   IERC20Ext internal constant ETH_ADDRESS = IERC20Ext(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
   uint256 internal constant PRECISION = (10**18);
@@ -231,6 +233,10 @@ ERC20BurnableUpgradeable {
     uint256 fee = withdrawableAdminFees.sub(1);
     withdrawableAdminFees = 1;
     _deposit(fee, admin);
+  }
+
+  function getVersionNumber() public view returns (uint256 verNo) {
+    verNo = VERSION_NO;
   }
 
   /*
