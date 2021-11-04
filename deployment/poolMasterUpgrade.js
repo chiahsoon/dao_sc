@@ -25,39 +25,29 @@ task('deployPool', 'deploy pool master contract').setAction(async (taskArgs, hre
 
   // contract deployment
   gasPrice = new BN.from(32).mul(new BN.from(10).pow(new BN.from(9)));
-  const PoolMaster = await ethers.getContractFactory('PoolMaster');
-  //let proxyContract = await ethers.getContractAt('PoolMaster', "0xED0804d4Cac089B28dC42b97D61b385E04011494");
-  //TODO: update the deploys so that it deploys with the correct arguments (use upgrades.DeployProxy)
+  const PoolMasterUpgrade = await ethers.getContractFactory('PoolMaster');
+  //TODO: Update this with the address of the first deployment of the proxy
+  let proxyContract = await ethers.getContractAt('PoolMaster', "0xED0804d4Cac089B28dC42b97D61b385E04011494");
 
-  let proxyContract = upgrades.deployProxy(PoolMaster, [
-    'KNC Pool Test',
-    'KNCP',
-    proxy,
-    staking,
-    gov,
-    rewardsDist,
-    mintFeeBps,
-    claimFeeBps,
-    burnFeeBps,
-    ],
-    {
-      initializer: 'initialize',
-      gasPrice: gasPrice,
-    }
-  );
-  await proxyContract.deployed();
-  console.log(`Address: ${proxyContract.address}`);
-  await verifyContract(hre, proxyContract.address, [
-    'KNC Pool Test',
-    'KNCP',
-    proxy,
-    staking,
-    gov,
-    rewardsDist,
-    mintFeeBps,
-    claimFeeBps,
-    burnFeeBps,
-  ]);
-  console.log('setup completed');
+  if(PoolMasterUpgrade.getVersionNumber() > proxyContract.getVersionNumber()) {
+    let contract = await upgrades.upgradeProxy(proxyContract.address, PoolMasterUpgrade.connect(deployer));
+    await contract.deployed();
+    console.log(`Address: ${contract.address}`);
+    //TODO: Not sure if this stays the same
+    await verifyContract(hre, contract.address, [
+      'KNC Pool Test',
+      'KNCP',
+      proxy,
+      staking,
+      gov,
+      rewardsDist,
+      mintFeeBps,
+      claimFeeBps,
+      burnFeeBps,
+    ]);
+    console.log('setup completed');
+  }else{
+    console.log('Error: New contract does not have higher version number than old contract')
+  }
   process.exit(0);
 });
