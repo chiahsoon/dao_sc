@@ -51,7 +51,7 @@ ERC20BurnableUpgradeable {
   enum FeeTypes {MINT, CLAIM, BURN}
 
   uint256 internal constant VERSION_NO = 1;
-  bytes32 public constant operatorRole = keccak256('OPERATOR');
+  bytes32 public constant OPERATOR_ROLE = keccak256('OPERATOR');
 
   IERC20Ext internal constant ETH_ADDRESS = IERC20Ext(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
   uint256 internal constant PRECISION = (10**18);
@@ -99,7 +99,7 @@ ERC20BurnableUpgradeable {
   }
 
   modifier onlyOperator {
-    require(hasRole(operatorRole, msg.sender), 'only operator');
+    require(hasRole(OPERATOR_ROLE, msg.sender), 'only operator');
     _;
   }
 
