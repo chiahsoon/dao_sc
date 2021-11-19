@@ -12,6 +12,8 @@ import {IRewardsDistributor} from '../interfaces/rewardDistribution/IRewardsDist
 import {IKyberGovernance} from '../interfaces/governance/IKyberGovernance.sol';
 import {PermissionAdminUpgradeable} from './PermissionAdminUpgradeable.sol';
 import {PermissionOperatorsUpgradeable} from './PermissionOperatorsUpgradeable.sol';
+import {AccessControlUpgradeable} from '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
 import '@openzeppelin/contracts/proxy/ProxyAdmin.sol';
 
 interface INewKNC {
@@ -34,7 +36,7 @@ interface IKyberNetworkProxy {
   ) external returns (uint256 destAmount);
 }
 
-contract PoolMaster is PermissionAdminUpgradeable, PermissionOperatorsUpgradeable, ReentrancyGuardUpgradeable,
+contract PoolMaster is AccessControlUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable,
 ERC20BurnableUpgradeable {
   using SafeMath for uint256;
   using SafeERC20 for IERC20Ext;
@@ -49,6 +51,7 @@ ERC20BurnableUpgradeable {
   enum FeeTypes {MINT, CLAIM, BURN}
 
   uint256 internal constant VERSION_NO = 1;
+  bytes32 public constant operatorRole = keccak256('OPERATOR');
 
   IERC20Ext internal constant ETH_ADDRESS = IERC20Ext(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
   uint256 internal constant PRECISION = (10**18);
@@ -79,7 +82,8 @@ ERC20BurnableUpgradeable {
     uint256 _burnFeeBps
   ) public initializer {
     __ERC20_init(_name, _symbol); // TODO: Need to init ERC20BurnableUpgradeable?
-    __PermissionAdmin_init(msg.sender);
+    __Ownable_init();
+    _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     __ReentrancyGuard_init();
     kyberProxy = _kyberProxy;
     kyberStaking = _kyberStaking;
@@ -92,6 +96,16 @@ ERC20BurnableUpgradeable {
     _oldKnc.safeApprove(_newKnc, type(uint256).max);
     IERC20Ext(_newKnc).safeApprove(address(_kyberStaking), type(uint256).max);
     _changeFees(_mintFeeBps, _claimFeeBps, _burnFeeBps);
+  }
+
+  modifier onlyOperator {
+    require(hasRole(operatorRole, msg.sender), 'only operator');
+    _;
+  }
+
+  modifier onlyAdmin {
+    require(owner() == _msgSender(), 'only admin');
+    _;
   }
 
   function changeKyberProxy(IKyberNetworkProxy _kyberProxy) external onlyAdmin {
@@ -226,13 +240,13 @@ ERC20BurnableUpgradeable {
   function withdrawAdminFee() external onlyOperator {
     uint256 fee = withdrawableAdminFees.sub(1);
     withdrawableAdminFees = 1;
-    newKnc.safeTransfer(admin, fee);
+    newKnc.safeTransfer(owner(), fee);
   }
 
   function stakeAdminFee() external onlyOperator {
     uint256 fee = withdrawableAdminFees.sub(1);
     withdrawableAdminFees = 1;
-    _deposit(fee, admin);
+    _deposit(fee, owner());
   }
 
   function getVersionNumber() public view returns (uint256 verNo) {
@@ -304,7 +318,7 @@ ERC20BurnableUpgradeable {
    */
   function _deposit(uint256 tokenWei, address user) internal {
     uint256 balanceBefore = getLatestStake();
-    uint256 depositAmount = user == admin ? tokenWei : _administerAdminFee(FeeTypes.MINT, tokenWei);
+    uint256 depositAmount = user == owner() ? tokenWei : _administerAdminFee(FeeTypes.MINT, tokenWei);
     _stake(depositAmount);
 
     uint256 mintAmount = _calculateMintAmount(balanceBefore, depositAmount);
