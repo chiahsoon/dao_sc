@@ -10,8 +10,6 @@ import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/Own
 import {IKyberStaking} from '../interfaces/staking/IKyberStaking.sol';
 import {IRewardsDistributor} from '../interfaces/rewardDistribution/IRewardsDistributor.sol';
 import {IKyberGovernance} from '../interfaces/governance/IKyberGovernance.sol';
-import {PermissionAdminUpgradeable} from './PermissionAdminUpgradeable.sol';
-import {PermissionOperatorsUpgradeable} from './PermissionOperatorsUpgradeable.sol';
 import {AccessControlUpgradeable} from '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
 import '@openzeppelin/contracts/proxy/ProxyAdmin.sol';
