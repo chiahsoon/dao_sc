@@ -117,6 +117,8 @@ contract('PoolMaster', function () {
 
   it('should allow upgrading poolMaster by owner only', async () => {
     console.log('ProxyAdmin Owner | User | Admin: ', await (await upgrades.admin.getInstance()).owner(), user.address, admin.address);
+    Helper.expectFuncThrowsError(poolMaster.checkUpgraded, TypeError, 'Type error not thrown');
+
     let PoolMasterV2 = await ethers.getContractFactory('PoolMasterV2');
     await expectRevert(upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(user)), 'Ownable: caller is not the owner');
     await expectRevert(upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(operator)), 'Ownable: caller is not the owner');
