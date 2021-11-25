@@ -247,7 +247,7 @@ ERC20BurnableUpgradeable {
     _deposit(fee, owner());
   }
 
-  function getVersionNumber() public view returns (uint256 verNo) {
+  function getVersionNumber() public pure returns (uint256 verNo) {
     verNo = VERSION_NO;
   }
 

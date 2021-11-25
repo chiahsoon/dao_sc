@@ -17,6 +17,8 @@ import './deployment/liquidityMining/deployLiquidityMining.js';
 import './deployment/createBinaryProposal.js';
 import './deployment/simFullProposal.js';
 import './deployment/simProposalExecution.js';
+import './deployment/poolMasterDeploy.js';
+import './deployment/poolMasterUpgrade.js';
 import { accounts } from './test-wallets';
 
 const config: HardhatUserConfig = {
