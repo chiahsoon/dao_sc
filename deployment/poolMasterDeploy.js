@@ -9,10 +9,10 @@ async function verifyContract(hre, contractAddress, ctorArgs) {
   });
 }
 
-const proxy = '0xd719c34261e099Fdb33030ac8909d5788D3039C4';
-const staking = '0x6A345cdaBA1B34cC74b877530CF28aD43b2bF2C7';
-const gov = '0xef5a1404E312078cd16B7139a2257eD3bb42F787';
-const rewardsDist = '0x3c25D80F41c41daa574f4dCD3Eaf3C9851962C1a';
+const proxy = '0x9AAb3f75489902f3a48495025729a0AF77d4b11e';
+const staking = '0xeadb96F1623176144EBa2B24e35325220972b3bD';
+const gov = '0x7Ec8FcC26bE7e9E85B57E73083E5Fe0550d8A7fE';
+const rewardsDist = '0x5EC0DcF4f6F55f28550c70B854082993fdc0D3B2';
 let mintFeeBps = 0;
 let claimFeeBps = 0;
 let burnFeeBps = 10;
@@ -20,7 +20,7 @@ let burnFeeBps = 10;
 task('deployPool', 'deploy pool master contract').setAction(async (taskArgs, hre) => {
   const BN = ethers.BigNumber;
   const [deployer] = await ethers.getSigners();
-  deployerAddress = await deployer.getAddress();
+  const deployerAddress = await deployer.getAddress();
   console.log(`Deployer address: ${deployerAddress}`);
 
   // contract deployment

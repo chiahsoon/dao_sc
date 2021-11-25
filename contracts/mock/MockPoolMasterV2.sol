@@ -28,7 +28,7 @@ ERC20BurnableUpgradeable {
   event FeesSet(uint256 mintFeeBps, uint256 burnFeeBps, uint256 claimFeeBps);
   enum FeeTypes {MINT, CLAIM, BURN}
 
-  uint256 internal constant VERSION_NO = 1;
+  uint256 internal constant VERSION_NO = 2;
   bytes32 public constant operatorRole = keccak256('OPERATOR');
 
   IERC20Ext internal constant ETH_ADDRESS = IERC20Ext(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
@@ -48,5 +48,9 @@ ERC20BurnableUpgradeable {
 
   function checkUpgraded() public pure returns (string memory) {
     return 'upgraded';
+  }
+
+  function getVersionNumber() public pure returns (uint256 verNo) {
+    verNo = VERSION_NO;
   }
 }
