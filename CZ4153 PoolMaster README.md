@@ -26,16 +26,17 @@ When users stake KNC in KyberDAO, they are given voting power to vote for variou
 
 ## Local Deployment
 
-1. Including the following variables in a `.env` file in the root of the project, or by defining them in your terminal
+1. Setup the project by running `yarn install` and `yarn c`.
+2. Include the following variables in a `.env` file in the root of the project, or by defining them in your terminal
     
     
     |  | Description | Example |
     | --- | --- | --- |
     | ETH_NODE_URL | Archival Node provider e.g. Alchemy | https://eth-mainnet.alchemyapi.io/v2/<key> |
     | FORK_BLOCK | Block to pin to | 13682292 (Nov-25-2021 07:56:43 AM +UTC) |
-2. Start a local node forked from mainnet by using `yarn hardhat node`
-3. To deploy `PoolMaster`, open another terminal and run `yarn hardhat deployProxy --network develop`
-4. To upgrade `PoolMaster`, run `yarn hardhat upgradeProxy --network develop`
+3. Start a local node forked from mainnet by using `yarn hardhat node`
+4. To deploy `PoolMaster`, open another terminal and run `yarn hardhat deployProxy --network develop`
+5. To upgrade `PoolMaster`, run `yarn hardhat upgradeProxy --network develop`
 
 ## Function Definitions
 
