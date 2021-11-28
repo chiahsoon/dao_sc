@@ -95,22 +95,37 @@ contract('PoolMaster', function () {
     await newKnc.connect(admin).mint(rewardsDistributor.address, initialBalance);
     await admin.sendTransaction({to: rewardsDistributor.address, value: precisionUnits.mul(new BN.from(10))});
     await dai.transfer(rewardsDistributor.address, initialBalance);
+
+    // deployProxy will set 'user' as the owner of the ProxyAdmin contract by default, might be better to change to admin
+    await upgrades.admin.transferProxyAdminOwnership(admin.address);
   });
 
   beforeEach('deploy poolMaster contract', async () => {
-    let PoolMaster = await ethers.getContractFactory('PoolMaster');
-    poolMaster = await PoolMaster.connect(admin).deploy(
-      'Pool KNC',
-      'PKNC',
-      kyberProxy.address,
-      kyberStaking.address,
-      kyberGovernance.address,
-      rewardsDistributor.address,
-      mintFeeBps,
-      claimFeeBps,
-      burnFeeBps
-    );
+    let PoolMaster = await ethers.getContractFactory('PoolMaster', admin);
+    poolMaster = await upgrades.deployProxy(PoolMaster, [
+        'Pool KNC',
+        'PKNC',
+        kyberProxy.address,
+        kyberStaking.address,
+        kyberGovernance.address,
+        rewardsDistributor.address,
+        mintFeeBps,
+        claimFeeBps,
+        burnFeeBps], {initializer: 'initialize'})
     await poolMaster.deployed();
+  });
+
+  it('should allow upgrading poolMaster by owner only', async () => {
+    console.log('ProxyAdmin Owner | User | Admin: ', await (await upgrades.admin.getInstance()).owner(), user.address, admin.address);
+    Helper.expectFuncThrowsError(poolMaster.checkUpgraded, TypeError, 'Type error not thrown');
+
+    let PoolMasterV2 = await ethers.getContractFactory('PoolMasterV2');
+    await expectRevert(upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(user)), 'Ownable: caller is not the owner');
+    await expectRevert(upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(operator)), 'Ownable: caller is not the owner');
+
+    let poolMasterV2 = await upgrades.upgradeProxy(poolMaster.address, PoolMasterV2.connect(admin));
+    Helper.assertEqual(poolMaster.address, poolMasterV2.address, 'proxy address should be constant');
+    Helper.assertEqual(await poolMasterV2.checkUpgraded(), 'upgraded');
   });
 
   it('should allow changing of proxy by admin only', async () => {
@@ -129,7 +144,7 @@ contract('PoolMaster', function () {
     Helper.assertEqual(await poolMaster.rewardsDistributor(), admin.address);
   });
 
-  it('should allow changing of rewards distributor by admin only', async () => {
+  it('should allow changing of governance by admin only', async () => {
     await expectRevert(poolMaster.connect(operator).changeGovernance(admin.address), 'only admin');
     await expectRevert(poolMaster.connect(user).changeGovernance(admin.address), 'only admin');
 
@@ -216,13 +231,13 @@ contract('PoolMaster', function () {
 
   it('should be able to vote by operator only', async () => {
     await expectRevert(poolMaster.connect(user).vote([1], [1]), 'only operator');
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await poolMaster.connect(operator).vote([1], [1]);
     await poolMaster.connect(operator).vote([1, 2, 3], [1, 2, 3]);
   });
 
   it('should revert for incorrect lengths of proposal ids or bitmasks', async () => {
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await expectRevert(poolMaster.connect(operator).vote([1], []), 'invalid length');
     await expectRevert(poolMaster.connect(operator).vote([], [1]), 'invalid length');
     await expectRevert(poolMaster.connect(operator).vote([1, 2], [1]), 'invalid length');
@@ -238,7 +253,7 @@ contract('PoolMaster', function () {
       'only operator'
     );
 
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await poolMaster.connect(operator).claimReward(1, 1, [ethAddress, newKnc.address], [100000, 100000], [ZERO_BYTES]);
     let adminFee = await poolMaster.withdrawableAdminFees();
     let ethBal = await ethers.provider.getBalance(poolMaster.address);
@@ -250,7 +265,7 @@ contract('PoolMaster', function () {
 
   it('should be able to claim rewards even if claimable KNC is 0', async () => {
     let initialEthBal = await ethers.provider.getBalance(poolMaster.address);
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await poolMaster.connect(operator).claimReward(1, 1, [ethAddress, newKnc.address], [100000, 0], [ZERO_BYTES]);
     let ethBal = await ethers.provider.getBalance(poolMaster.address);
     Helper.assertGreater(ethBal.toString(), initialEthBal.toString());
@@ -259,7 +274,7 @@ contract('PoolMaster', function () {
   it('should have pool master give token allowance to proxy by the operator', async () => {
     await expectRevert(poolMaster.connect(user).approveKyberProxyContract(dai.address, true), 'only operator');
     await expectRevert(poolMaster.connect(operator).approveKyberProxyContract(dai.address, true), 'only operator');
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await poolMaster.connect(operator).approveKyberProxyContract(dai.address, true);
     Helper.assertEqual(MAX_UINT.toString(), (await dai.allowance(poolMaster.address, kyberProxy.address)).toString());
     await poolMaster.connect(operator).approveKyberProxyContract(dai.address, false);
@@ -267,7 +282,7 @@ contract('PoolMaster', function () {
   });
 
   it('should revert attempts to give new KNC allowance to kyber proxy', async () => {
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await expectRevert(
       poolMaster.connect(operator).approveKyberProxyContract(newKnc.address, true),
       'knc not allowed'
@@ -279,7 +294,7 @@ contract('PoolMaster', function () {
   });
 
   it('should be able to liquidate rewards to KNC and re-stake by operator', async () => {
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     // send dai, eth and knc to pool master
     let tokenAmount = precisionUnits.mul(new BN.from(2));
     await newKnc.connect(admin).mint(poolMaster.address, tokenAmount);
@@ -311,12 +326,12 @@ contract('PoolMaster', function () {
   });
 
   it('should revert liquidations for bad token and minRates length', async () => {
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await expectRevert(poolMaster.connect(operator).liquidateTokensToKnc([dai.address], []), 'unequal lengths');
   });
 
   it('will stake any leftover knc through liquidations', async () => {
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     // someone accidentally send KNC to contract
     await newKnc.connect(admin).mint(poolMaster.address, precisionUnits);
     let adminFee = await poolMaster.withdrawableAdminFees();
@@ -328,7 +343,7 @@ contract('PoolMaster', function () {
 
   it('should withdraw admin fee by operator only to admin', async () => {
     let initialKncBal = await newKnc.balanceOf(admin.address);
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await poolMaster.connect(operator).claimReward(1, 1, [newKnc.address], [100000], [ZERO_BYTES]);
     let adminFee = await poolMaster.withdrawableAdminFees();
 
@@ -344,7 +359,7 @@ contract('PoolMaster', function () {
 
   it('should stake admin fee by operator only to admin', async () => {
     let initialPoolBal = await poolMaster.balanceOf(admin.address);
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     await poolMaster.connect(operator).claimReward(1, 1, [newKnc.address], [100000], [ZERO_BYTES]);
 
     await expectRevert(poolMaster.stakeAdminFee(), 'only operator');
@@ -362,7 +377,7 @@ contract('PoolMaster', function () {
     let userTotalStakeAmount = precisionUnits.mul(new BN.from(2));
     let stakeAmount = precisionUnits;
     let proRataKnc = await poolMaster.getProRataKnc();
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
     // stake 1 old and 1 new KNC
     await oldKnc.connect(user).approve(poolMaster.address, MAX_UINT);
     await poolMaster.connect(user).depositWithOldKnc(stakeAmount);
@@ -420,7 +435,7 @@ contract('PoolMaster', function () {
     await newKnc.connect(admin).mint(user.address, stakeAmount);
     await newKnc.connect(user).approve(poolMaster.address, MAX_UINT);
     await poolMaster.connect(user).depositWithNewKnc(stakeAmount);
-    await poolMaster.connect(admin).addOperator(operator.address);
+    await poolMaster.connect(admin).grantRole(poolMaster.OPERATOR_ROLE(), operator.address)
 
     // user claims on behalf of poolMaster directly
     await rewardsDistributor.connect(user).claim(1, 1, poolMaster.address, [newKnc.address], [50000], [ZERO_BYTES]);

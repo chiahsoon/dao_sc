@@ -66,6 +66,18 @@ module.exports.expectThrow = async function (promise, message) {
   assert.fail('Expected throw not received');
 };
 
+module.exports.expectFuncThrowsError = function (fn, errorType, message) {
+  // Refactor to allow for arguments to be passed in as well
+  let failed = true;
+  try {
+    fn();
+    failed = false;
+  } catch (error) {
+    assert(error instanceof errorType, message);
+  }
+  assert(failed, message);
+};
+
 module.exports.sendEtherWithPromise = function (sender, recv, amount) {
   return new Promise(function (fulfill, reject) {
     web3.eth.sendTransaction({to: recv, from: sender, value: amount}, function (error, result) {

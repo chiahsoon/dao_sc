@@ -17,7 +17,7 @@ let mintFeeBps = 0;
 let claimFeeBps = 0;
 let burnFeeBps = 10;
 
-task('deployPool', 'deploy pool master contract').setAction(async (taskArgs, hre) => {
+task('upgradePool', 'upgrade pool master contract').setAction(async (taskArgs, hre) => {
   const BN = ethers.BigNumber;
   const [deployer] = await ethers.getSigners();
   const deployerAddress = await deployer.getAddress();
@@ -25,29 +25,15 @@ task('deployPool', 'deploy pool master contract').setAction(async (taskArgs, hre
 
   // contract deployment
   gasPrice = new BN.from(32).mul(new BN.from(10).pow(new BN.from(9)));
-  const PoolMaster = await ethers.getContractFactory('PoolMaster');
-  //let proxyContract = await ethers.getContractAt('PoolMaster', "0xED0804d4Cac089B28dC42b97D61b385E04011494");
-  //TODO: update the deploys so that it deploys with the correct arguments (use upgrades.DeployProxy)
+  const PoolMasterUpgrade = await ethers.getContractFactory('PoolMaster');
+  //TODO: Update this with the address of the first deployment of the proxy
+  let proxyContract = await ethers.getContractAt('PoolMaster', "0xED0804d4Cac089B28dC42b97D61b385E04011494");
 
-  let proxyContract = await upgrades.deployProxy(PoolMaster, [
-    'KNC Pool Test',
-    'KNCP',
-    proxy,
-    staking,
-    gov,
-    rewardsDist,
-    mintFeeBps,
-    claimFeeBps,
-    burnFeeBps,
-    ],
-    {
-      initializer: 'initialize',
-      gasPrice: gasPrice,
-    }
-  );
-  await proxyContract.deployed();
-  console.log(`Address: ${proxyContract.address}`);
-  await verifyContract(hre, proxyContract.address, [
+  let contract = await upgrades.upgradeProxy(proxyContract.address, PoolMasterUpgrade.connect(deployer));
+  await contract.deployed();
+  console.log(`Address: ${contract.address}, Version: ${await contract.getVersionNumber()}`);
+  //TODO: Not sure if this stays the same
+  await verifyContract(hre, contract.address, [
     'KNC Pool Test',
     'KNCP',
     proxy,
