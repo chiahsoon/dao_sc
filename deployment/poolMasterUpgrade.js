@@ -29,25 +29,21 @@ task('upgradePool', 'upgrade pool master contract').setAction(async (taskArgs, h
   //TODO: Update this with the address of the first deployment of the proxy
   let proxyContract = await ethers.getContractAt('PoolMaster', "0xED0804d4Cac089B28dC42b97D61b385E04011494");
 
-  if(PoolMasterUpgrade.getVersionNumber() > proxyContract.getVersionNumber()) {
-    let contract = await upgrades.upgradeProxy(proxyContract.address, PoolMasterUpgrade.connect(deployer));
-    await contract.deployed();
-    console.log(`Address: ${contract.address}`);
-    //TODO: Not sure if this stays the same
-    await verifyContract(hre, contract.address, [
-      'KNC Pool Test',
-      'KNCP',
-      proxy,
-      staking,
-      gov,
-      rewardsDist,
-      mintFeeBps,
-      claimFeeBps,
-      burnFeeBps,
-    ]);
-    console.log('setup completed');
-  }else{
-    console.log('Error: New contract does not have higher version number than old contract')
-  }
+  let contract = await upgrades.upgradeProxy(proxyContract.address, PoolMasterUpgrade.connect(deployer));
+  await contract.deployed();
+  console.log(`Address: ${contract.address}, Version: ${await contract.getVersionNumber()}`);
+  //TODO: Not sure if this stays the same
+  await verifyContract(hre, contract.address, [
+    'KNC Pool Test',
+    'KNCP',
+    proxy,
+    staking,
+    gov,
+    rewardsDist,
+    mintFeeBps,
+    claimFeeBps,
+    burnFeeBps,
+  ]);
+  console.log('setup completed');
   process.exit(0);
 });

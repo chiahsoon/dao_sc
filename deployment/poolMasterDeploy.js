@@ -29,7 +29,7 @@ task('deployPool', 'deploy pool master contract').setAction(async (taskArgs, hre
   //let proxyContract = await ethers.getContractAt('PoolMaster', "0xED0804d4Cac089B28dC42b97D61b385E04011494");
   //TODO: update the deploys so that it deploys with the correct arguments (use upgrades.DeployProxy)
 
-  let proxyContract = upgrades.deployProxy(PoolMaster, [
+  let proxyContract = await upgrades.deployProxy(PoolMaster, [
     'KNC Pool Test',
     'KNCP',
     proxy,
